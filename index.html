@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>CloudInfra Deploy Engine – Terraform from a Web UI</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description"
+        content="CloudInfra Deploy Engine – a web-based Terraform deployment platform by Balwant Singh. Ship AWS infrastructure with beautiful UI, pre-built templates, and live logs – no CLI required." />
+
+    <!-- Tailwind CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Tailwind config tweak (optional) -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ["system-ui", "Inter", "ui-sans-serif", "sans-serif"],
+                    },
+                },
+            },
+        };
+    </script>
+
+    <style>
+        /* Animated gradient background */
+        .bg-animated {
+            background: radial-gradient(circle at top, #1d4ed8, #020617, #020617);
+            background-size: 200% 200%;
+            animation: bgMove 18s ease-in-out infinite;
+        }
+
+        @keyframes bgMove {
+            0% {
+                background-position: 0% 0%;
+            }
+
+            50% {
+                background-position: 100% 50%;
+            }
+
+            100% {
+                background-position: 0% 0%;
+            }
+        }
+
+        /* Floating blobs */
+        .blob {
+            filter: blur(50px);
+            opacity: 0.6;
+            mix-blend-mode: screen;
+            animation: blobFloat 16s infinite alternate;
+        }
+
+        @keyframes blobFloat {
+            0% {
+                transform: translate3d(0, 0, 0) scale(1);
+            }
+
+            50% {
+                transform: translate3d(40px, -40px, 0) scale(1.1);
+            }
+
+            100% {
+                transform: translate3d(-30px, 20px, 0) scale(0.9);
+            }
+        }
+
+        .blob-delayed {
+            animation-delay: -8s;
+        }
+
+        /* Glassy card */
+        .glass-card {
+            background: rgba(15, 23, 42, 0.85);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            backdrop-filter: blur(18px);
+            border-radius: 18px;
+            box-shadow:
+                0 18px 45px rgba(15, 23, 42, 0.9),
+                0 0 0 1px rgba(15, 23, 42, 0.9);
+            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+        }
+
+        .glass-card:hover {
+            transform: translateY(-6px) translateZ(0) scale(1.01);
+            border-color: rgba(56, 189, 248, 0.5);
+            box-shadow:
+                0 24px 60px rgba(15, 23, 42, 1),
+                0 0 0 1px rgba(56, 189, 248, 0.5);
+        }
+
+        /* Tilted demo panels */
+        .tilt-card {
+            transform: perspective(900px) rotateX(10deg) rotateY(-12deg) translateY(0);
+            transform-origin: center;
+            transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+            box-shadow: 0 18px 40px rgba(15, 23, 42, 0.95);
+        }
+
+        .tilt-card:hover {
+            transform: perspective(900px) rotateX(3deg) rotateY(-3deg) translateY(-6px) scale(1.02);
+            box-shadow: 0 24px 60px rgba(15, 23, 42, 1);
+        }
+
+        /* Floating animation for any element */
+        .floating {
+            animation: floating 6s ease-in-out infinite;
+        }
+
+        .floating-delayed {
+            animation: floating 7s ease-in-out 1s infinite;
+        }
+
+        @keyframes floating {
+            0% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-10px);
+            }
+
+            100% {
+                transform: translateY(0);
+            }
+        }
+
+        /* Gradient text */
+        .text-gradient {
+            background: linear-gradient(90deg, #38bdf8, #a855f7, #f97316);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+        }
+
+        /* Fancy underline link */
+        .link-fancy {
+            position: relative;
+        }
+
+        .link-fancy::after {
+            content: "";
+            position: absolute;
+            left: 0;
+            bottom: -2px;
+            width: 0;
+            height: 1px;
+            background: linear-gradient(90deg, #38bdf8, #a855f7);
+            transition: width 0.2s ease;
+        }
+
+        .link-fancy:hover::after {
+            width: 100%;
+        }
+
+        /* Section spacing */
+        section {
+            scroll-margin-top: 80px;
+        }
+    </style>
+</head>
+
+<body class="min-h-screen bg-slate-950 text-slate-100 bg-animated">
+    <!-- Gradient blobs -->
+    <div class="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
+        <div class="blob absolute -top-40 -left-10 h-80 w-80 rounded-full bg-sky-500/40"></div>
+        <div class="blob blob-delayed absolute top-40 right-0 h-80 w-80 rounded-full bg-purple-500/40"></div>
+        <div class="blob absolute bottom-0 left-1/3 h-72 w-72 rounded-full bg-emerald-500/40"></div>
+    </div>
+
+    <!-- Page container -->
+    <div class="relative mx-auto flex min-h-screen max-w-6xl flex-col px-4 pb-16 pt-5 sm:px-6 lg:px-8">
+        <!-- Navbar -->
+        <header class="flex items-center justify-between gap-4 py-3">
+            <div class="flex items-center gap-3">
+                <div
+                    class="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900/80 border border-sky-500/50 shadow-lg shadow-sky-500/40">
+                    <span class="text-xl">☁️</span>
+                </div>
+                <div>
+                    <div class="text-xs uppercase tracking-[0.18em] text-slate-400">
+                        CloudInfra
+                    </div>
+                    <div class="text-sm font-semibold text-slate-100">
+                        Deploy Engine
+                    </div>
+                </div>
+            </div>
+
+            <nav class="hidden items-center gap-6 text-xs sm:flex">
+                <a href="#features" class="link-fancy text-slate-300 hover:text-sky-400">Features</a>
+                <a href="#templates" class="link-fancy text-slate-300 hover:text-sky-400">Templates</a>
+                <a href="#how-it-works" class="link-fancy text-slate-300 hover:text-sky-400">How it works</a>
+                <a href="#founder" class="link-fancy text-slate-300 hover:text-sky-400">Founder</a>
+                <a href="#contact" class="link-fancy text-slate-300 hover:text-sky-400">Contact</a>
+            </nav>
+
+            <div class="flex items-center gap-3">
+                <a href="https://github.com/your-username/cloudinfra-deploy-engine" target="_blank"
+                    class="hidden rounded-full border border-slate-700/70 px-3 py-1.5 text-xs text-slate-300 hover:border-sky-500/60 hover:text-sky-300 sm:inline-flex items-center gap-1">
+                    <span>⭐</span>
+                    <span>GitHub</span>
+                </a>
+                <a href="#waitlist"
+                    class="rounded-full bg-sky-500 px-4 py-1.5 text-xs font-semibold text-slate-950 shadow-[0_0_25px_rgba(56,189,248,0.8)] hover:bg-sky-400">
+                    Join waitlist
+                </a>
+            </div>
+        </header>
+
+        <!-- Hero -->
+        <main class="mt-6 flex flex-1 flex-col gap-14 lg:mt-10 lg:flex-row lg:items-center lg:gap-10">
+            <!-- Hero text -->
+            <section class="flex-1 space-y-6">
+                <p
+                    class="inline-flex items-center gap-2 rounded-full border border-sky-500/40 bg-slate-950/70 px-3 py-1 text-[11px] text-sky-200 shadow-lg shadow-sky-500/20">
+                    <span class="rounded-full bg-sky-500/20 px-1.5 py-0.5 text-[10px]">NEW</span>
+                    <span>Terraform deployments from a web UI – built by Balwant Singh</span>
+                </p>
+
+                <h1 class="text-3xl font-semibold leading-tight sm:text-4xl lg:text-5xl">
+                    <span class="text-slate-100">Ship AWS infrastructure</span><br />
+                    <span class="text-gradient">without touching the CLI.</span>
+                </h1>
+
+                <p class="max-w-xl text-sm text-slate-300 sm:text-[15px]">
+                    <strong>CloudInfra Deploy Engine</strong> turns Terraform into a
+                    beautiful web platform – pre-built templates, secure AWS key handling, real-time logs,
+                    custom ZIP deployments and a dashboard that feels like a DevOps control center.
+                </p>
+
+                <div class="flex flex-wrap items-center gap-3">
+                    <a href="#waitlist"
+                        class="rounded-xl bg-sky-500 px-5 py-2.5 text-sm font-semibold text-slate-950 shadow-[0_0_35px_rgba(56,189,248,0.8)] hover:bg-sky-400 flex items-center gap-2">
+                        <span>🚀</span>
+                        <span>Get early access</span>
+                    </a>
+                    <a href="#templates"
+                        class="rounded-xl border border-slate-700/80 bg-slate-950/70 px-4 py-2 text-xs text-slate-200 hover:border-sky-400/80 hover:text-sky-300 flex items-center gap-2">
+                        <span>🧩</span>
+                        <span>Explore templates</span>
+                    </a>
+                </div>
+
+                <div class="mt-4 grid max-w-lg grid-cols-3 gap-3 text-[11px] text-slate-300">
+                    <div class="rounded-2xl border border-slate-700/60 bg-slate-950/80 px-3 py-2 floating">
+                        <div class="text-xs font-semibold text-sky-300">6+ templates</div>
+                        <div class="text-[11px] text-slate-400">EC2, VPC, ALB+ASG, EKS, S3, Secure Web</div>
+                    </div>
+                    <div class="rounded-2xl border border-slate-700/60 bg-slate-950/80 px-3 py-2 floating-delayed">
+                        <div class="text-xs font-semibold text-emerald-300">Custom ZIP</div>
+                        <div class="text-[11px] text-slate-400">Upload any Terraform project</div>
+                    </div>
+                    <div class="rounded-2xl border border-slate-700/60 bg-slate-950/80 px-3 py-2">
+                        <div class="text-xs font-semibold text-amber-300">Logs &amp; Destroy</div>
+                        <div class="text-[11px] text-slate-400">See everything, tear down safely</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Hero visual -->
+            <section class="mt-4 flex-1 lg:mt-0">
+                <div class="relative mx-auto flex max-w-md flex-col items-center">
+                    <!-- Background glow panel -->
+                    <div
+                        class="tilt-card relative w-full rounded-3xl border border-slate-700/80 bg-slate-950/90 p-4 shadow-2xl">
+                        <!-- Top bar -->
+                        <div class="mb-3 flex items-center justify-between text-[11px] text-slate-400">
+                            <div class="flex items-center gap-1.5">
+                                <span class="h-2 w-2 rounded-full bg-red-500/70"></span>
+                                <span class="h-2 w-2 rounded-full bg-amber-400/70"></span>
+                                <span class="h-2 w-2 rounded-full bg-emerald-400/70"></span>
+                                <span class="ml-2 font-mono text-[10px] text-slate-500">terraform apply</span>
+                            </div>
+                            <span
+                                class="rounded-full border border-slate-700/70 px-2 py-0.5 text-[10px] text-slate-400">
+                                Dashboard • Job #19
+                            </span>
+                        </div>
+
+                        <!-- Fake dashboard content -->
+                        <div class="space-y-3">
+                            <div class="flex flex-wrap items-center justify-between gap-2 text-[11px]">
+                                <div class="flex gap-2">
+                                    <span
+                                        class="rounded-full bg-emerald-500/20 px-2 py-0.5 text-emerald-300">SUCCESS</span>
+                                    <span class="rounded-full bg-slate-800 px-2 py-0.5 text-slate-300">
+                                        Template: <span class="font-mono">alb_asg</span>
+                                    </span>
+                                </div>
+                                <span class="font-mono text-sky-300 truncate">alb-demo-123.elb.amazonaws.com</span>
+                            </div>
+
+                            <div class="grid grid-cols-3 gap-2 text-[11px] text-slate-300">
+                                <div class="rounded-xl bg-slate-900/80 p-2">
+                                    <div class="text-[10px] text-slate-500">Mode</div>
+                                    <div class="font-semibold">Template</div>
+                                    <div class="text-[10px] text-slate-500">web_server → EKS</div>
+                                </div>
+                                <div class="rounded-xl bg-slate-900/80 p-2">
+                                    <div class="text-[10px] text-slate-500">Jobs</div>
+                                    <div class="font-semibold">19</div>
+                                    <div class="text-[10px] text-emerald-400">16 passed</div>
+                                </div>
+                                <div class="rounded-xl bg-slate-900/80 p-2">
+                                    <div class="text-[10px] text-slate-500">Region</div>
+                                    <div class="font-semibold">ap-south-1</div>
+                                    <div class="text-[10px] text-slate-500">Mumbai</div>
+                                </div>
+                            </div>
+
+                            <div class="mt-2 rounded-2xl bg-black/90 p-2 text-[10px] font-mono text-slate-300">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-slate-400">Live logs</span>
+                                    <span
+                                        class="rounded-full bg-emerald-500/20 px-2 py-0.5 text-emerald-300">streaming</span>
+                                </div>
+                                <pre class="mt-1 max-h-32 overflow-hidden whitespace-pre-wrap text-[10px]">
+aws_eks_cluster.this: Creation complete
+aws_eks_node_group.this: Creation complete
+Apply complete! Resources: 12 added, 0 changed, 0 destroyed.
+
+Outputs:
+
+cluster_endpoint = "https://ABCDEF.gr7.ap-south-1.eks.amazonaws.com"
+cluster_name     = "cloudinfra-eks-demo"
+                </pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Smaller floating cards -->
+                    <div
+                        class="floating absolute -left-6 -bottom-6 w-32 rounded-2xl border border-emerald-500/40 bg-slate-950/90 p-2 text-[10px] text-slate-200 shadow-xl shadow-emerald-500/40">
+                        <div class="text-[10px] text-emerald-300">Secure Web Hosting</div>
+                        <div class="mt-1 space-y-0.5">
+                            <div class="flex justify-between">
+                                <span>Repo</span>
+                                <span class="font-mono text-[9px] text-slate-400">github.com/you/app</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span>Domain</span>
+                                <span class="font-mono text-[9px] text-slate-400">example.com</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div
+                        class="floating-delayed absolute -right-4 -top-6 w-32 rounded-2xl border border-purple-500/40 bg-slate-950/90 p-2 text-[10px] text-slate-200 shadow-xl shadow-purple-500/40">
+                        <div class="text-[10px] text-purple-300">Custom ZIP</div>
+                        <p class="mt-1 text-[9px] text-slate-400">
+                            Upload terraform.zip<br />Run apply from the web.
+                        </p>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Features -->
+        <section id="features" class="mt-20 space-y-6">
+            <div class="flex flex-wrap items-end justify-between gap-3">
+                <div>
+                    <h2 class="text-xl font-semibold text-slate-100 sm:text-2xl">
+                        Terraform superpowers, <span class="text-gradient">without the complexity.</span>
+                    </h2>
+                    <p class="mt-1 max-w-xl text-sm text-slate-400">
+                        CloudInfra Deploy Engine is designed for students, DevOps beginners, and small teams that want
+                        real infrastructure – EC2, VPCs, ALBs, RDS, EKS – without fighting the CLI every day.
+                    </p>
+                </div>
+                <div class="text-[11px] text-slate-400">
+                    Built by <span class="text-sky-300 font-semibold">Balwant Singh</span> as a full major-project
+                    turned product.
+                </div>
+            </div>
+
+            <div class="grid gap-4 md:grid-cols-3">
+                <div class="glass-card p-4">
+                    <div class="mb-2 text-lg">🧩 Templates</div>
+                    <p class="text-sm text-slate-300">
+                        Opinionated templates for common AWS patterns: web server, VPC, ALB + ASG, Secure Web Hosting,
+                        two-tier app, S3 static hosting, and a basic EKS cluster.
+                    </p>
+                </div>
+                <div class="glass-card p-4">
+                    <div class="mb-2 text-lg">📦 Custom Terraform</div>
+                    <p class="text-sm text-slate-300">
+                        Upload your own Terraform project as a ZIP, pass AWS credentials, and let the engine handle
+                        <code>init</code> + <code>apply</code> + log streaming from the web.
+                    </p>
+                </div>
+                <div class="glass-card p-4">
+                    <div class="mb-2 text-lg">🔒 Safer key handling</div>
+                    <p class="text-sm text-slate-300">
+                        AWS keys are injected only at runtime via environment variables – not stored in the database or
+                        logs.
+                        Designed with student + training use-cases in mind.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Templates gallery -->
+        <section id="templates" class="mt-20 space-y-6">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <h2 class="text-xl font-semibold text-slate-100 sm:text-2xl">
+                    Templates that feel like DevOps shortcuts.
+                </h2>
+                <span
+                    class="rounded-full border border-slate-700/80 bg-slate-950/70 px-3 py-1 text-[11px] text-slate-300">
+                    More patterns coming: multi-cloud, serverless, CI/CD…
+                </span>
+            </div>
+
+            <div class="grid gap-4 md:grid-cols-3">
+                <!-- EC2 Web -->
+                <article class="glass-card p-4 hover:-translate-y-2 hover:shadow-cyan-500/30">
+                    <div class="mb-1 text-sm font-semibold text-sky-300">Web Server – EC2</div>
+                    <p class="text-xs text-slate-300">
+                        Single EC2 instance with Apache, security groups, key pair – perfect for basic websites,
+                        learning sessions, or quick demos.
+                    </p>
+                    <p class="mt-3 text-[11px] text-slate-500 font-mono">
+                        Outputs: public_ip, public_dns
+                    </p>
+                </article>
+
+                <!-- VPC -->
+                <article class="glass-card p-4 hover:-translate-y-2 hover:shadow-emerald-500/30">
+                    <div class="mb-1 text-sm font-semibold text-emerald-300">VPC – Public &amp; Private</div>
+                    <p class="text-xs text-slate-300">
+                        Custom VPC, public and private subnets, routing – a clean starting point for any serious app.
+                    </p>
+                    <p class="mt-3 text-[11px] text-slate-500 font-mono">
+                        Outputs: vpc_id, subnet_ids
+                    </p>
+                </article>
+
+                <!-- ALB + ASG -->
+                <article class="glass-card p-4 hover:-translate-y-2 hover:shadow-fuchsia-500/30">
+                    <div class="mb-1 text-sm font-semibold text-fuchsia-300">ALB + Auto Scaling</div>
+                    <p class="text-xs text-slate-300">
+                        Highly-available web tier behind an Application Load Balancer with an Auto Scaling Group – feels
+                        like
+                        a mini production environment.
+                    </p>
+                    <p class="mt-3 text-[11px] text-slate-500 font-mono">
+                        Outputs: alb_dns_name, asg_name
+                    </p>
+                </article>
+
+                <!-- Two-tier -->
+                <article class="glass-card p-4 hover:-translate-y-2 hover:shadow-amber-500/30">
+                    <div class="mb-1 text-sm font-semibold text-amber-300">Two-Tier App – EC2 + RDS</div>
+                    <p class="text-xs text-slate-300">
+                        Web EC2 instance plus managed RDS MySQL with security groups wired for app-to-DB communication.
+                    </p>
+                    <p class="mt-3 text-[11px] text-slate-500 font-mono">
+                        Outputs: web_public_dns, db_endpoint
+                    </p>
+                </article>
+
+                <!-- Secure web hosting -->
+                <article class="glass-card p-4 hover:-translate-y-2 hover:shadow-emerald-500/40">
+                    <div class="mb-1 text-sm font-semibold text-emerald-300">Secure Web Hosting</div>
+                    <p class="text-xs text-slate-300">
+                        Your minor project, upgraded: hardened EC2, Nginx, GitHub repo clone, domain-name aware config,
+                        SSH restricted via CIDR.
+                    </p>
+                    <p class="mt-3 text-[11px] text-slate-500 font-mono">
+                        Inputs: repo_url, branch, domain, allowed_ssh_cidr
+                    </p>
+                </article>
+
+                <!-- EKS -->
+                <article class="glass-card p-4 hover:-translate-y-2 hover:shadow-sky-500/40">
+                    <div class="mb-1 text-sm font-semibold text-sky-300">EKS – Basic Cluster</div>
+                    <p class="text-xs text-slate-300">
+                        A minimal EKS cluster with managed node group using default VPC subnets – meant for learning
+                        Kubernetes
+                        the practical way.
+                    </p>
+                    <p class="mt-3 text-[11px] text-slate-500 font-mono">
+                        Outputs: cluster_name, cluster_endpoint
+                    </p>
+                </article>
+            </div>
+        </section>
+
+        <!-- How it works -->
+        <section id="how-it-works" class="mt-20 space-y-6">
+            <h2 class="text-xl font-semibold text-slate-100 sm:text-2xl">
+                How CloudInfra Deploy Engine works
+            </h2>
+
+            <div class="grid gap-6 md:grid-cols-3">
+                <div class="glass-card p-4">
+                    <div class="mb-1 text-xs font-semibold uppercase tracking-[0.20em] text-slate-400">
+                        Step 1
+                    </div>
+                    <div class="mb-2 text-sm font-semibold text-slate-100">Pick a mode</div>
+                    <p class="text-sm text-slate-300">
+                        Choose between a pre-built template or Custom ZIP mode. Templates hide Terraform complexity
+                        behind
+                        simple, focused forms.
+                    </p>
+                </div>
+                <div class="glass-card p-4">
+                    <div class="mb-1 text-xs font-semibold uppercase tracking-[0.20em] text-slate-400">
+                        Step 2
+                    </div>
+                    <div class="mb-2 text-sm font-semibold text-slate-100">Provide inputs &amp; AWS keys</div>
+                    <p class="text-sm text-slate-300">
+                        Fill in instance names, CIDRs, GitHub repo URLs or DB details. Add AWS keys that are used only
+                        at execution time.
+                    </p>
+                </div>
+                <div class="glass-card p-4">
+                    <div class="mb-1 text-xs font-semibold uppercase tracking-[0.20em] text-slate-400">
+                        Step 3
+                    </div>
+                    <div class="mb-2 text-sm font-semibold text-slate-100">Run &amp; observe</div>
+                    <p class="text-sm text-slate-300">
+                        Terraform runs in a controlled environment. Watch live logs, inspect outputs, and tear
+                        everything down
+                        with a single Destroy action.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Founder -->
+        <section id="founder" class="mt-20 grid gap-6 md:grid-cols-[1.3fr,1fr] md:items-center">
+            <div>
+                <h2 class="text-xl font-semibold text-slate-100 sm:text-2xl">
+                    Meet the founder – <span class="text-gradient">Balwant Singh</span>
+                </h2>
+                <p class="mt-3 text-sm text-slate-300">
+                    I built CloudInfra Deploy Engine initially as my major project – and then pushed it into a full
+                    product:
+                    templates for real AWS architectures, a secure Terraform runner, and a UI that feels like a cloud
+                    control cockpit.
+                </p>
+                <p class="mt-3 text-sm text-slate-300">
+                    My goal is simple: <span class="text-sky-300 font-semibold">make DevOps and Terraform
+                        accessible</span>
+                    for students, beginners, and lean teams. No more “I’m scared of the CLI” – just open a website,
+                    log in, choose a template, and deploy.
+                </p>
+
+                <div class="mt-4 flex flex-wrap items-center gap-3 text-sm">
+                    <a href="https://www.linkedin.com" target="_blank"
+                        class="rounded-full bg-sky-500 px-4 py-1.5 text-xs font-semibold text-slate-950 hover:bg-sky-400 flex items-center gap-2">
+                        <span>💼</span>
+                        <span>Connect with Balwant on LinkedIn</span>
+                    </a>
+                    <a href="mailto:hello@cloudinfra.dev" class="text-xs text-slate-300 hover:text-sky-300 link-fancy">
+                        hello@cloudinfra.dev
+                    </a>
+                </div>
+            </div>
+
+            <div class="glass-card p-4 floating">
+                <div class="flex items-center gap-3">
+                    <div
+                        class="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-900 border border-sky-500/50 shadow-lg shadow-sky-500/40">
+                        <span class="text-xl">🧑‍💻</span>
+                    </div>
+                    <div>
+                        <div class="text-sm font-semibold text-slate-100">Balwant Singh</div>
+                        <div class="text-[11px] text-slate-400">Founder &amp; Builder, CloudInfra Deploy Engine</div>
+                    </div>
+                </div>
+                <p class="mt-3 text-xs text-slate-300">
+                    Cloud + DevOps + Python + Terraform. My favourite thing is turning raw cloud primitives into
+                    experiences that feel like polished products.
+                </p>
+                <div class="mt-3 grid grid-cols-2 gap-2 text-[11px] text-slate-300">
+                    <div class="rounded-xl bg-slate-900/80 p-2">
+                        <div class="text-[10px] text-slate-500">Stack</div>
+                        <div>Python, Flask, Terraform, AWS</div>
+                    </div>
+                    <div class="rounded-xl bg-slate-900/80 p-2">
+                        <div class="text-[10px] text-slate-500">Focus</div>
+                        <div>Beginner-friendly DevOps tooling</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Waitlist / Contact -->
+        <section id="waitlist" class="mt-20 space-y-6">
+            <div class="glass-card p-5 md:flex md:items-center md:justify-between md:gap-6">
+                <div class="md:max-w-md">
+                    <h2 class="text-xl font-semibold text-slate-100 sm:text-2xl">
+                        Be part of the first cohort using CloudInfra Deploy Engine.
+                    </h2>
+                    <p class="mt-2 text-sm text-slate-300">
+                        I’m actively improving the platform – more templates, multi-cloud support, and possibly a
+                        student-friendly SaaS launch. Join the waitlist if you want to try it early or use it in your
+                        college.
+                    </p>
+                </div>
+                <form class="mt-4 flex flex-col gap-2 text-sm md:mt-0 md:w-72">
+                    <input type="email" required placeholder="Your email address"
+                        class="w-full rounded-xl border border-slate-700 bg-slate-950/80 px-3 py-2 text-xs text-slate-100 placeholder:text-slate-500 focus:border-sky-400 focus:outline-none" />
+                    <button type="submit"
+                        class="rounded-xl bg-sky-500 px-4 py-2 text-xs font-semibold text-slate-950 hover:bg-sky-400 shadow-[0_0_25px_rgba(56,189,248,0.7)]">
+                        Join waitlist
+                    </button>
+                    <p class="text-[10px] text-slate-500">
+                        No spam – just product updates and opportunities to collaborate.
+                    </p>
+                </form>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer id="contact" class="mt-16 border-t border-slate-800 pt-6 text-[11px] text-slate-500">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                    <div class="text-slate-400">
+                        © <span id="year"></span> CloudInfra Deploy Engine • Built by
+                        <span class="text-sky-300 font-semibold">Balwant Singh</span>
+                    </div>
+                    <div class="mt-1 text-[10px] text-slate-500">
+                        Designed as a major project turned real-world DevOps tool. AWS + Terraform + Python + a lot of
+                        experiments.
+                    </div>
+                </div>
+                <div class="flex flex-wrap items-center gap-4">
+                    <a href="https://github.com/your-username/cloudinfra-deploy-engine" target="_blank"
+                        class="link-fancy text-slate-400 hover:text-sky-300">
+                        GitHub repo
+                    </a>
+                    <a href="#founder" class="link-fancy text-slate-400 hover:text-sky-300">
+                        About founder
+                    </a>
+                    <a href="mailto:hello@cloudinfra.dev" class="link-fancy text-slate-400 hover:text-sky-300">
+                        Contact
+                    </a>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        // Just set current year in footer
+        document.getElementById("year").textContent = new Date().getFullYear();
+    </script>
+</body>
+
+</html>
